@@ -29,3 +29,15 @@ WITH main as
  from seats where is_empty='Y'
 )
 select seat_no from main where diff in (select diff from main group by diff having count(*)>=3)
+
+/* Solution 2 */
+
+select * from (
+select * ,lag(is_empty,1) OVER (Order by seat_no) as prev_seat1
+,lag(is_empty,2) OVER (Order by seat_no) as prev_seat2
+,lead(is_empty,1) OVER (Order by seat_no) as next_seat1
+,lead(is_empty,2) OVER (Order by seat_no) as next_seat2
+from seats ) A
+where (is_empty='Y' and prev_seat1='Y' and prev_seat2='Y')
+or (is_empty='Y' and prev_seat1='Y' and next_seat1='Y')
+or (is_empty='Y' and next_seat2='Y' and next_seat1='Y')
