@@ -1,0 +1,31 @@
+/* 3 or more consecutive empty seats */
+
+/* Table create script */
+create table seats (seat_no int ,is_empty varchar(10));
+
+/* Table insert script */
+insert into seats values
+(1,'N')
+,(2,'Y')
+,(3,'N')
+,(4,'Y')
+,(5,'Y')
+,(6,'Y')
+,(7,'N')
+,(8,'Y')
+,(9,'Y')
+,(10,'Y')
+,(11,'Y')
+,(12,'N')
+,(13,'Y')
+,(14,'Y');
+
+/* Solution */
+
+WITH main as 
+(select seat_no, row_number() OVER ( order by seat_no) as rn 
+, seat_no - row_number() OVER ( order by seat_no)  as diff
+
+ from seats where is_empty='Y'
+)
+select seat_no from main where diff in (select diff from main group by diff having count(*)>=3)
