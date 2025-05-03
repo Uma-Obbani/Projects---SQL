@@ -22,9 +22,16 @@ insert into orders values
 ,(8,5,'2020-02-20',150)
 
 /* repeat customers */
-SELECT strftime('%Y-%m', cm.order_date) AS cm_month,count(distinct pm.cust_id) as repeat_customers
-FROM orders cm
-JOIN orders pm 
-  ON cm.cust_id = pm.cust_id
- WHERE strftime('%Y-%m', cm.order_date) = strftime('%Y-%m', date(pm.order_date, '+1 month'));
+WITH base as 
+(
+select cust_id , order_id , date_part('month',order_date) as cm_order_date  , order_date
+, lag(date_part('month',order_date)) OVER (PARTITION by cust_id order by order_date asc) as pm_month
+,date_part('month',order_date) - lag(date_part('month',order_date)) OVER (PARTITION by cust_id order by order_date asc) as month_diff
+
+from transactions
+)
+
+select cm_order_date , sum(case when month_diff=1 then 1 when month_diff is null then 0 end) as retention
+from base
+group by cm_order_date
 
