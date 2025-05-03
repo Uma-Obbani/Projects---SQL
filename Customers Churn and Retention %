@@ -22,6 +22,8 @@ insert into orders values
 ,(8,5,'2020-02-20',150)
 
 /* repeat customers */
+
+
 WITH base as 
 (
 select cust_id , order_id , date_part('month',order_date) as cm_order_date  , order_date
@@ -30,8 +32,6 @@ select cust_id , order_id , date_part('month',order_date) as cm_order_date  , or
 
 from transactions
 )
-
-select cm_order_date , sum(case when month_diff=1 then 1 when month_diff is null then 0 end) as retention
+select cm_order_date , sum(case when month_diff=1 then 1 else 0 end) as retention
 from base
 group by cm_order_date
-
