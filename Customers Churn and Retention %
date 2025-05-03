@@ -35,3 +35,21 @@ from transactions
 select cm_order_date , sum(case when month_diff=1 then 1 else 0 end) as retention
 from base
 group by cm_order_date
+
+/* Chunred customers percentage */
+
+WITH Jan_customers as 
+(
+select distinct cust_id from transactions where order_date between '2020-01-01' and '2020-01-31' 
+) , 
+Feb_customers as 
+(
+select distinct cust_id from transactions where order_date between '2020-02-01' and '2020-02-28' 
+)
+select 
+count(jan.cust_id) as Jan_customers
+,count(feb.cust_id) as Feb_customers
+,count(jan.cust_id) - count(feb.cust_id) as churned_customers
+,round(((count(jan.cust_id) - count(feb.cust_id) )*100 )/count(Jan.cust_id),2) as churned_Per
+from Jan_customers jan 
+LEFT JOIN Feb_customers feb on jan.cust_id=feb.cust_id
