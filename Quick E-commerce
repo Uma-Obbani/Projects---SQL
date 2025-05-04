@@ -29,6 +29,15 @@ from orders )
 select  count(customer_code) , placed_at::date   from base where r_no=1
 group by placed_at::date
 
+/* users who have order in Jan and not return in the future month */
+select customer_code , count(*)  from orders
+where to_char(placed_at::date,'MM/YYYY')='01/2025'
+and customer_code not in (select distinct customer_code  from orders 
+where to_char(placed_at::date,'MM/YYYY')>'01/2025')
+group by customer_code
+having count(*)=1
+order by customer_code
+
 
 
 
