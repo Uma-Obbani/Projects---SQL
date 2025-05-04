@@ -23,6 +23,11 @@ from base ) where r_no<=3
 
 /* find the daily new customers count from the launch date */
 
+WITH base as 
+(select customer_code,placed_at,row_number() OVER(PARTITION BY customer_code order by placed_at ) as r_no
+from orders )
+select  count(customer_code) , placed_at::date   from base where r_no=1
+group by placed_at::date
 
 
 
