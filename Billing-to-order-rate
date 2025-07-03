@@ -1,0 +1,16 @@
+
+WITH billing_sessions AS 
+(
+SELECT 
+o.order_id AS order_id , pv.website_session_id AS session_id ,
+pageview_url as url
+FROM website_pageviews pv
+LEFT JOIN orders o ON o.website_session_id=pv.website_session_id
+WHERE pageview_url in ('/billing-2' , '/billing')
+AND website_pageview_id>53550
+)
+SELECT url , COUNT(DISTINCT order_id)  , COUNT(DISTINCT session_id) ,
+COUNT(DISTINCT order_id)  / COUNT(DISTINCT session_id) AS billing_to_order_rt
+
+ FROM billing_sessions
+ GROUP BY url
