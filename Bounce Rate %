@@ -1,0 +1,41 @@
+
+Bounce Rate %
+
+SELECT *
+FROM website_pageviews 
+WHERE website_session_id=1059
+
+WITH base AS
+(
+SELECT  ps.website_session_id AS session_id,pv.website_session_id AS pageview_session_id ,pv.pageview_url AS page_url 
+FROM website_pageviews pv
+LEFT JOIN website_sessions  ps ON pv.website_session_id=ps.website_session_id
+WHERE ps.created_at BETWEEN '2014-01-01' AND '2014-02-01'
+ORDER BY 2
+),
+each_count AS
+(
+SELECT session_id  ,page_url,
+CASE WHEN page_url='/products' THEN 1 ELSE 0 END  AS products_page ,
+ CASE WHEN page_url='/cart' THEN 1 ELSE 0 END AS cart_page ,
+CASE WHEN page_url='/the-original-mr-fuzzy' THEN 1 ELSE 0 END  AS orig_puzzy
+FROM base
+
+) , 
+max_page AS 
+(
+SELECT 
+session_id  ,
+MAX(products_page)  AS products_made_it ,
+ MAX(cart_page ) AS cart_made_it ,
+MAX(orig_puzzy)  AS orig_puzzy_made_it
+
+FROM each_count
+GROUP BY session_id
+)
+SELECT COUNT(DISTINCT session_id) , 
+COUNT(DISTINCT CASE WHEN products_made_it=1 THEN session_id ELSE NULL END) / COUNT(DISTINCT session_id) AS to_prod ,
+COUNT(DISTINCT CASE WHEN cart_made_it=1 THEN session_id ELSE NULL END) / COUNT(DISTINCT session_id) AS to_cart,
+COUNT(DISTINCT CASE WHEN orig_puzzy_made_it=1 THEN session_id ELSE NULL END) / COUNT(DISTINCT session_id)  AS to_puzzy
+
+FROM max_page
