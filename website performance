@@ -1,0 +1,79 @@
+-- CONVERSATION RATE % ----
+SELECT YEAR(ws.created_at) AS yr,
+MONTH(ws.created_at) AS month,
+COUNT(DISTINCT ws.website_session_id) AS sessions ,
+COUNT(DISTINCT o.order_id) AS orders , 
+COUNT(DISTINCT o.order_id) / COUNT(DISTINCT ws.website_session_id) AS conv_rate
+FROM website_sessions ws
+LEFT JOIN orders o on ws.website_session_id=o.website_session_id
+WHERE ws.created_at<'2012-11-27'
+AND utm_source='gsearch'
+GROUP BY 1, 2
+-------------------------------------------------------------------------
+----SESSIONS AND ORDERS INFORMATION ----
+
+SELECT YEAR(ws.created_at) AS yr,
+MONTH(ws.created_at) AS month,
+COUNT( DISTINCT CASE WHEN utm_campaign='nonbrand' then ws.website_session_id ELSE NULL END) AS nonbrand_sessions,
+COUNT(DISTINCT CASE WHEN utm_campaign='nonbrand' then o.order_id ELSE NULL END) AS nonbrand_orders,
+COUNT(DISTINCT CASE WHEN utm_campaign='brand' then ws.website_session_id ELSE NULL END) AS brand_sessions,
+COUNT(DISTINCT CASE WHEN utm_campaign='brand' then o.order_id ELSE NULL END) AS brand_orders
+FROM website_sessions ws
+LEFT JOIN orders o on ws.website_session_id=o.website_session_id
+WHERE ws.created_at<'2012-11-27'
+AND utm_source='gsearch'
+GROUP BY 1, 2
+-----------------------------------------------------------------------------
+ ----------SESSIONS AND ORDERS BY DEVICE TYPE ---------- 
+
+SELECT YEAR(ws.created_at) AS yr,
+MONTH(ws.created_at) AS month,
+COUNT( DISTINCT CASE WHEN device_type='desktop' then ws.website_session_id ELSE NULL END) AS desktop_sessions,
+COUNT(DISTINCT CASE WHEN device_type='desktop' then o.order_id ELSE NULL END) AS desktop_orders,
+COUNT(DISTINCT CASE WHEN device_type='mobile' then ws.website_session_id ELSE NULL END) AS mobile_sessions,
+COUNT(DISTINCT CASE WHEN device_type='mobile' then o.order_id ELSE NULL END) AS mobile_orders
+FROM website_sessions ws
+LEFT JOIN orders o on ws.website_session_id=o.website_session_id
+WHERE ws.created_at<'2012-11-27'
+AND utm_source='gsearch'
+AND utm_campaign='nonbrand'
+GROUP BY 1, 2
+
+----------------
+ ------SESSIONS FROM THE SOURCE 
+SELECT 
+YEAR(ws.created_at) AS yr,
+MONTH(ws.created_at) AS month,
+COUNT(DISTINCT CASE WHEN utm_source='gsearch' then ws.website_session_id ELSE NULL END) AS gsearch_paid,
+COUNT(DISTINCT CASE WHEN utm_source='bsearch' then ws.website_session_id ELSE NULL END) AS bsearch_paid,
+COUNT(DISTINCT CASE WHEN utm_source IS NULL AND http_referer IS NOT NULL then ws.website_session_id ELSE NULL END) AS organic_search,
+COUNT(DISTINCT CASE WHEN utm_source IS NULL AND http_referer IS  NULL then ws.website_session_id ELSE NULL END) AS direct_type_in_sessions
+FROM website_sessions ws
+LEFT JOIN orders o ON ws.website_session_id=o.website_session_id
+WHERE ws.created_at<'2012-11-27'
+GROUP BY 1, 2
+
+---------------------------------
+----------------LANDING PAGE PERFORMANCE -------
+WITH first_page_views AS (
+  SELECT 
+    MIN(website_pageview_id) AS first_test_pv
+  FROM website_pageviews
+  WHERE pageview_url = '/lander-1' -- 23504
+), 
+min_page_views AS (
+  SELECT 
+    wp.website_session_id, 
+    MIN(wp.website_pageview_id) AS min_pageview_id,
+    fv.first_test_pv
+  FROM website_pageviews wp
+  CROSS JOIN first_page_views fv  -- no ON condition here
+  INNER JOIN website_sessions ws ON wp.website_session_id = ws.website_session_id
+  WHERE ws.created_at < '2012-07-28'
+    AND wp.website_pageview_id >= fv.first_test_pv
+    AND ws.utm_source = 'gsearch'
+    AND ws.utm_campaign = 'nonbrand'
+    AND wp.pageview_url IN ('/home' , '/lander')
+  GROUP BY wp.website_session_id, fv.first_test_pv
+)
+SELECT * FROM  min_page_views
