@@ -1,0 +1,80 @@
+NEW AND REPEAT USERS 
+WITH base AS 
+(SELECT user_id , website_session_id , ROW_NUMBER () OVER(PARTITIOn BY user_id ORDER BY website_session_id) AS rno
+
+FROM website_sessions 
+WHERE created_at<'2014-11-01'
+AND created_at>'2014-01-01' 
+ -- new_session only
+
+) , 
+new_repeat AS 
+(
+SELECT user_id ,  
+COUNT(CASE WHEN rno=1 THEN website_session_id  END) AS new_sessions
+,COUNT(CASE WHEN rno>1 THEN website_session_id  END) AS repeat_sessions
+ FROM base 
+ GROUP BY user_id
+ )
+ SELECT repeat_sessions , COUNT(DISTINCT user_id)  FROM new_repeat
+ GROUP BY repeat_sessions
+ 
+ ----------------------
+NEW and REPEATED SESSIONS
+WITH new_u AS 
+( SELECT  user_id AS ne_users, created_at AS new_created_dt , website_session_id AS new_sessions
+ FROM website_sessions
+ WHERE is_repeat_session=0 
+),
+repeat_s AS
+( SELECT  user_id AS re_users, created_at AS re_created_dt , website_session_id AS repeat_sessions
+ FROM website_sessions
+ WHERE is_repeat_session=1 
+) , 
+date_diff AS 
+(
+SELECT n.ne_users ,n.new_sessions , n.new_created_dt,
+r.re_users ,r.repeat_sessions,
+r.re_created_dt , 
+ABS(DATEDIFF( n.new_created_dt , r.re_created_dt) ) AS days_between_first_second
+FROM new_u n
+INNER JOIN repeat_s r ON n.ne_users=r.re_users
+ WHERE n.ne_users IN ('152837' , '152847')
+)
+SELECT AVG(days_between_first_second) ,
+MIN(days_between_first_second),
+MAX(days_between_first_second)
+
+ FROM date_diff
+---------------------------
+NEW AND REPEAT SESSIONS BY CHANNELS
+
+SELECT CASE WHEN utm_source IS NULL AND http_referer in ('https://www.bsearch.com','https://www.gsearch.com') THEN 'organic_search' 
+WHEN utm_campaign='nonbrand' THEN 'paid_nonbrand'
+WHEN utm_campaign='brand' THEN 'paid_brand'
+WHEN utm_source IS NULL AND http_referer IS NULL THEN 'direct_type_in'
+WHEN utm_source ='socialbook' THEN 'paid_social' END AS channel_group ,
+
+COUNT(DISTINCT CASE WHEN is_repeat_session=0 THEN website_session_id END) AS new_sessions,
+COUNT(DISTINCT CASE WHEN is_repeat_session=1 THEN website_session_id END) AS repeat_sessions
+
+FROM website_sessions
+WHERE created_at<'2014-11-01'
+AND created_at>'2014-01-01' 
+GROUP BY 1
+
+-----------------------------
+CONVERSION RATE bY REPEATED SESSIONS 
+
+SELECT is_repeat_session , 
+COUNt(DISTINCT ws.website_session_id) , COUNT(DISTINCT o.order_id),
+COUNT(DISTINCT o.order_id) / COUNt(DISTINCT ws.website_session_id) AS conversion_rate,
+SUM(price_usd) AS revenue
+
+
+
+FROM website_sessions ws
+LEFT JOIN orders o ON ws.website_session_id=ws.website_session_id
+WHERE ws.created_at<'2014-11-01'
+AND ws.created_at>'2014-01-01'
+GROUP BY 1
