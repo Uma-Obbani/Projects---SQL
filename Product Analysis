@@ -1,0 +1,90 @@
+PRODUCT ANALYSIS BASED ON THE SESSION AND PAGEVIEWS
+
+
+SELECT YEAR(ws.created_at) AS year,
+MONTH(ws.created_at) AS month,
+COUNT(DISTINCT order_id)  AS orders,
+SUM(price_usd) AS revenue,
+SUM(price_usd - cogs_usd) AS margin,
+AVG(price_usd),
+COUNT(DISTINCT order_id)  / COUNT(DISTINCT ws.website_session_id) AS conve,
+SUM(price_usd) / COUNT(DISTINCT ws.website_session_id) AS rev_per_SESSION
+
+
+       
+FROM website_sessions ws 
+LEFT JOIN orders o ON o.website_session_id=ws.website_session_id  
+ 
+ WHERE ws.created_at >'2012-04-01'
+GROUP BY 1 ,2
+ORDER BY 1,2
+)
+
+SELECT * FROM products limit 1
+SELECT distinct primary_product_id FROM orders limit 1
+------------------
+-- CONVERSION RATE FOR THE PRODUCTS
+WITH pageviews AS 
+(
+SELECT  pageview_url,
+COUNT(DISTINCT pv.website_session_id) AS sessions,
+COUNT(DISTINCT o.order_id) AS orders,
+COUNT(DISTINCT o.order_id) / COUNT(DISTINCT pv.website_session_id)  AS conversion_rate
+
+FROM website_pageviews pv
+LEFT JOIN orders o ON o.website_session_id=pv.website_session_id
+WHERE pv.created_at BETWEEN '2013-02-01' AND '2013-03-01'
+AND pageview_url IN ('/the-forever-love-bear' ,'/the-original-mr-fuzzy')
+GROUP BY 1
+)
+SELECT pageview_url , ROUND(conversion_rate *100,2)  AS conversion_rate FROM pageviews
+------------------------------
+
+-- NEXT PRODUCT PAGE URL FROM THE SPECIFIC PRODUCTS.
+
+WITH products_pageviews AS
+(
+SELECT 
+website_session_id , 
+website_pageview_id ,
+created_at ,
+CASE WHEN created_at <'2013-01-06' THEN 'A.Pre_Product_2'
+WHEN created_at>= '2013-01-06' THEN 'B.Pre_Product_2' END AS product_name
+FROM website_pageviews
+WHERE created_at<'2013-04-06'
+AND created_at >'2012-10-06'
+ -- AND website_session_id='31513'
+),
+session_pageview AS 
+(
+SELECT pp.created_at , pp.website_session_id AS website_session_id  ,product_name,
+MIN(wp.website_pageview_id) AS min_next_pageview_id 
+-- MIN(pp.website_pageview_id) AS prod_next_pageview_id
+
+
+FROM products_pageviews pp
+LEFT JOIN website_pageviews wp ON wp.website_session_id=pp.website_session_id
+WHERE wp.website_pageview_id >pp.website_pageview_id
+-- AND  pp.website_session_id='31513' OR wp.website_session_id='31513' 
+GROUP BY 1, 2
+),
+session_next_pageview_url AS
+(
+SELECT  product_name,snpv.website_session_id AS website_session_id , pv.pageview_url AS next_page_url
+
+FROM session_pageview snpv
+LEFT JOIN website_pageviews pv ON pv.website_pageview_id=snpv.min_next_pageview_id
+) ,
+KPI_Pct AS 
+(
+SELECT product_name ,COUNT(DISTINCT website_session_id) ,
+COUNT(DISTINCT CASE WHEN next_page_url IS NOT NULL THEN website_session_id ELSE NULL END) AS w_next_page,
+COUNT(DISTINCT CASE WHEN next_page_url IS NOT NULL THEN website_session_id ELSE NULL END) / COUNT(DISTINCT website_session_id) AS pct_next_page,
+COUNT(DISTINCT CASE WHEN next_page_url= '/the-original-mr-fuzzy' THEN website_session_id ELSE NULL END) AS to_mrfuzzy,
+COUNT(DISTINCT CASE WHEN next_page_url= '/the-original-mr-fuzzy' THEN website_session_id ELSE NULL END) / COUNT(DISTINCT website_session_id) AS pct_to_mrfuzzy,
+COUNT(DISTINCT CASE WHEN next_page_url= '/the-forever-love-bear' THEN website_session_id ELSE NULL END) AS to_forever,
+COUNT(DISTINCT CASE WHEN next_page_url= '/the-forever-love-bear' THEN website_session_id ELSE NULL END)  / COUNT(DISTINCT website_session_id) AS pct_to_forever
+FROM session_next_pageview_url
+GROUP BY product_name
+)
+SELECT * FROM KPI_Pct
