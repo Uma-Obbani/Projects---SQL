@@ -1,0 +1,19 @@
+
+WITH cross_selling_products  AS
+(
+SELECT 
+o.primary_product_id ,
+COUNT(DISTINCT o.order_id) AS orders,
+COUNT(DISTINCT CASE WHEN oi.product_id=1 THEN o.order_id ELSE NULL END ) AS x_sell2_product,
+COUNT(DISTINCT CASE WHEN oi.product_id=2 THEN o.order_id ELSE NULL END ) AS x_sell2product,
+COUNT(DISTINCT CASE WHEN oi.product_id=3 THEN o.order_id ELSE NULL END ) AS x_sell3_product,
+COUNT(DISTINCT CASE WHEN oi.product_id=1 THEN o.order_id ELSE NULL END )  / COUNT(DISTINCT o.order_id) AS x_sell_product1_rt,
+COUNT(DISTINCT CASE WHEN oi.product_id=2 THEN o.order_id ELSE NULL END )  / COUNT(DISTINCT o.order_id) AS x_sell_product2_rt,
+COUNT(DISTINCT CASE WHEN oi.product_id=3 THEN o.order_id ELSE NULL END )  / COUNT(DISTINCT o.order_id) AS x_sell_product3_rt
+FROM orders o
+LEFT JOIN order_items oi ON o.order_id=oi.order_id 
+WHERE o.order_id BETWEEN 10000 AND 11000
+AND oi.is_primary_item=0
+GROUP BY 1
+)
+SELECT * FROM cross_selling_products
